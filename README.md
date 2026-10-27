@@ -53,7 +53,7 @@ curl localhost:8000/reports/recent       # 최근 분석된 저장소
 
 API 상태 확인: `http://localhost:8000/health`
 
-프론트엔드 화면 (Vite가 `/api/*`를 `localhost:8000`으로 프록시합니다):
+프론트엔드 화면 — `http://localhost:5180` (포트 고정, Vite가 `/api/*`를 `localhost:8000`으로 프록시합니다):
 
 ```bash
 cd frontend
