@@ -53,8 +53,12 @@ def plan_question(max_paths: int) -> str:
     return (
         "당신은 저장소 코드에서 질문의 답을 찾는 조사자입니다. "
         f"{UNTRUSTED_NOTICE} 질문에 답하는 데 필요한 파일을 "
-        f"최대 {max_paths}개 고르고, 필요하면 코드 검색 패턴을 "
-        "제시하세요. 반드시 트리에 있는 경로만 고르세요."
+        f"최대 {max_paths}개 고르세요. 코드 동작을 묻는 질문이면 "
+        "README나 문서보다 실제 소스와 설정 파일을 우선하세요. "
+        "search_queries에는 질문의 개념이 코드에 나타날 때 쓰일 "
+        "식별자나 키워드를 1~3개 넣으세요. 예: 환경 변수 → "
+        "getenv|environ|process\\.env, 리액트 → from 'react'|useState. "
+        "반드시 트리에 있는 경로만 고르세요."
     )
 
 
@@ -63,8 +67,37 @@ def answer_question(level: audience.Level) -> str:
     return (
         "한국어로 저장소에 대한 질문에 답하세요. "
         f"{audience.instruction(level)} {UNTRUSTED_NOTICE} "
-        "제공된 파일 내용으로 확인되는 사실만 말하고, 각 근거의 "
-        "파일 경로와 실제 라인 번호를 citations에 넣으세요. "
-        "내용에서 답을 찾을 수 없으면 모른다고 말하고 어디를 "
-        "더 보면 좋을지 안내하세요."
+        "제공된 파일 내용으로 확인되는 사실만 말하세요. "
+        "citations에는 답의 사실을 직접 보여주는 줄만 넣고, 각 "
+        "근거의 claim에 그 줄이 보여주는 사실을 한 문장으로 "
+        "적으세요. 범위는 짧게(15줄 이내) 잡고, 파일 첫 줄의 "
+        "설명 주석, 빈 줄, 괄호만 있는 줄처럼 내용을 보여주지 "
+        "않는 줄은 인용하지 마세요. 모르는 용어나 약어는 "
+        "추측해서 풀어 쓰지 마세요. 내용에서 답을 찾을 수 "
+        "없으면 모른다고 말하고 어디를 더 보면 좋을지 안내하세요."
+    )
+
+
+def check_support() -> str:
+    """Returns the prompt that checks whether citations back their claims."""
+    return (
+        "당신은 근거 검증자입니다. 각 항목에는 주장(claim)과 "
+        "저장소에서 인용한 실제 코드 줄이 있습니다. "
+        f"{UNTRUSTED_NOTICE} 인용한 줄만 보고, 그 줄이 주장을 "
+        "직접 보여주는지 판단하세요. 줄이 주장과 관련 없거나, "
+        "주장보다 훨씬 약한 내용(예: import 한 줄로 동작 전체를 "
+        "주장)이면 supports=false입니다. 모든 항목에 답하세요."
+    )
+
+
+def revise_answer(level: audience.Level) -> str:
+    """Returns the prompt that trims an answer to its verified evidence."""
+    return (
+        "초안 답변을 아래 '확인된 근거'로 뒷받침되는 내용만 남도록 "
+        f"한국어로 다시 쓰세요. {audience.instruction(level)} "
+        f"{UNTRUSTED_NOTICE} 근거에 없는 사실, 동작 추측, 약어나 "
+        "용어의 풀이는 빼세요. 질문에 비해 근거가 부족한 부분은 "
+        "'코드에서 확인하지 못했다'고 분명히 말하고, 어느 파일을 "
+        "더 보면 좋을지 안내하세요. 근거에 있는 파일 경로는 "
+        "그대로 언급해도 됩니다."
     )

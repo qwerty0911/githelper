@@ -347,3 +347,30 @@ async def test_question_errors_map_to_http_status(db):
 
     assert response.status_code == 502
     assert "rate limit" in response.json()["detail"]
+
+
+async def test_answers_from_older_qa_versions_are_not_reused(db):
+    calls = []
+    job_id = await jobs.create_job(db, REPO)
+    await worker.run_once(db, make_generate([]))
+    job = await get_job(db, job_id)
+    await jobs.save_question(
+        db,
+        job_id=job["_id"],
+        report_id=job["report_id"],
+        question="어디서 시작해?",
+        answer="old answer",
+        citations=[],
+        grounded=False,
+        cached=False,
+        version="1/old-model/old-model",
+    )
+
+    async with client_for(db, make_answerer(calls)) as client:
+        response = await client.post(
+            f"/jobs/{job_id}/questions", json={"question": "어디서 시작해?"}
+        )
+
+    assert response.json()["cached"] is False
+    assert response.json()["answer"] == "README에 있어요."
+    assert len(calls) == 1

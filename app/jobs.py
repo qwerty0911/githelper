@@ -281,11 +281,27 @@ async def recent_reports(db, limit: int = RECENT_LIMIT) -> list[Document]:
 
 
 async def find_answer(
-    db, report_id: bson.ObjectId, question: str
+    db, report_id: bson.ObjectId, question: str, version: str
 ) -> Document | None:
-    """Returns an earlier answer to the same question about a report."""
+    """Returns an earlier answer to the same question about a report.
+
+    Args:
+        db: The application database.
+        report_id: Report the question is about.
+        question: The question as asked.
+        version: Q&A cache key (pipeline and model versions). Answers
+            from other versions are ignored so changes are not hidden by
+            the cache.
+
+    Returns:
+        The latest matching question document, or `None`.
+    """
     return await db.questions.find_one(
-        {"report_id": report_id, "normalized": normalize_question(question)},
+        {
+            "report_id": report_id,
+            "normalized": normalize_question(question),
+            "qa_version": version,
+        },
         sort=[("created_at", -1)],
     )
 
@@ -300,6 +316,7 @@ async def save_question(
     citations: list[dict[str, Any]],
     grounded: bool,
     cached: bool,
+    version: str,
 ) -> Document:
     """Stores a question and its answer in a job's history.
 
@@ -315,6 +332,7 @@ async def save_question(
         "citations": citations,
         "grounded": grounded,
         "cached": cached,
+        "qa_version": version,
         "created_at": _now(),
     }
     result = await db.questions.insert_one(document)

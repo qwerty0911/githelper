@@ -83,11 +83,21 @@ class AgentState(TypedDict, total=False):
     html: str
 
 
-def create_model(model_name: str | None = None) -> Any:
-    """Creates the chat model from environment settings.
+DEFAULT_MODEL = "gpt-4o-mini"
+# Reasoning models only accept the default temperature.
+_REASONING_PREFIXES = ("gpt-5", "o1", "o3", "o4")
+
+
+def resolve_model_name(override: str | None = None) -> str:
+    """Returns the model to use: `override`, else `OPENAI_MODEL`."""
+    return override or os.getenv("OPENAI_MODEL") or DEFAULT_MODEL
+
+
+def create_model(override: str | None = None) -> Any:
+    """Creates a chat model from environment settings.
 
     Args:
-        model_name: Optional model override. Defaults to `OPENAI_MODEL`.
+        override: Optional model name. Defaults to `OPENAI_MODEL`.
 
     Returns:
         A LangChain chat model.
@@ -97,10 +107,10 @@ def create_model(model_name: str | None = None) -> Any:
     """
     if not os.getenv("OPENAI_API_KEY"):
         raise RuntimeError("OPENAI_API_KEY is required to generate a report.")
-    return langchain_openai.ChatOpenAI(
-        model=model_name or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        temperature=0,
-    )
+    name = resolve_model_name(override)
+    if name.startswith(_REASONING_PREFIXES):
+        return langchain_openai.ChatOpenAI(model=name)
+    return langchain_openai.ChatOpenAI(model=name, temperature=0)
 
 
 async def read_into(

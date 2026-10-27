@@ -94,20 +94,30 @@ export function QuestionPanel({jobId}: QuestionPanelProps) {
               </p>
             )}
             {item.citations.length > 0 && (
-              <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                <span className="text-slate-500">근거:</span>
-                {item.citations.map(citation => (
-                  <a
-                    key={citation.url}
-                    href={citation.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-mono text-indigo-600 hover:underline"
-                  >
-                    {citation.path}:{citation.start_line}-{citation.end_line}
-                  </a>
-                ))}
-              </p>
+              <div className="mt-3 text-xs">
+                <p className="text-slate-500">근거</p>
+                <ul className="mt-1 space-y-1">
+                  {item.citations.map(citation => (
+                    <li key={citation.url}>
+                      <a
+                        href={citation.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-mono text-indigo-600 hover:underline"
+                      >
+                        {citation.path}:{citation.start_line}-
+                        {citation.end_line}
+                      </a>
+                      {citation.claim && (
+                        <span className="text-slate-600">
+                          {' '}
+                          — {citation.claim}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </li>
         ))}

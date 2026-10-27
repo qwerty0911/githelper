@@ -198,3 +198,9 @@ def test_tracing_config_enables_langfuse_only_with_keys(monkeypatch):
     config = tracing.tracing_config(repo="o/r", branch="main", run_name="q")
     assert len(config["callbacks"]) == 1
     assert config["run_name"] == "q"
+
+
+def test_reasoning_models_use_default_temperature(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    assert runner.create_model("gpt-4.1").temperature == 0
+    assert runner.create_model("gpt-5.4-mini").temperature is None

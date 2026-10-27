@@ -190,7 +190,9 @@ async def ask_question(
             status_code=422, detail="Question must not be empty."
         )
 
-    previous = await jobs.find_answer(db, report["_id"], question)
+    previous = await jobs.find_answer(
+        db, report["_id"], question, qa.cache_version()
+    )
     if previous is not None:
         document = await jobs.save_question(
             db,
@@ -201,6 +203,7 @@ async def ask_question(
             citations=previous["citations"],
             grounded=previous["grounded"],
             cached=True,
+            version=qa.cache_version(),
         )
         return jobs.serialize_question(
             document, repository.full_name, report["commit_sha"]
@@ -244,6 +247,7 @@ async def ask_question(
         citations=[citation.model_dump() for citation in result.citations],
         grounded=result.grounded,
         cached=False,
+        version=qa.cache_version(),
     )
     return jobs.serialize_question(
         document, repository.full_name, report["commit_sha"]

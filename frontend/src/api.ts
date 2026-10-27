@@ -53,6 +53,8 @@ export interface Citation {
   start_line: number;
   end_line: number;
   url: string;
+  /** What the cited lines show. Missing on answers from older versions. */
+  claim?: string;
 }
 
 /** A follow-up question and its verified answer. */
