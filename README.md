@@ -62,3 +62,12 @@ pytest
 
 비동기 작업 API, 워커, SSE 진행 상태, 프론트엔드에서 실제로 리포트를 요청하는 흐름은 다음 단계에서 구현합니다.
 # githelper
+
+## 추적 (Langfuse / LangSmith)
+
+둘 다 선택 사항이며, 키를 `.env`에 넣으면 CLI 실행 시 자동으로 트레이스가 전송됩니다.
+
+- Langfuse: `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`
+- LangSmith: `LANGSMITH_TRACING=true`, `LANGSMITH_API_KEY`, `LANGSMITH_PROJECT`
+
+구현은 [app/agent/tracing.py](app/agent/tracing.py)에 있습니다.

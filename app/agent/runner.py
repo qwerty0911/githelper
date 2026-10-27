@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.agent.budget import count_tokens, fit_lines
 from app.agent.github import GitHubError, GitHubTools, Repository
 from app.agent.report import ProjectReport, render_report, verify_citations
+from app.agent.tracing import flush_traces, tracing_config
 
 load_dotenv()
 
@@ -229,7 +230,9 @@ async def generate_report(
     tools = GitHubTools(repository)
     try:
         graph = build_graph(tools, model_name)
-        result = await graph.ainvoke({"repository": repository})
+        config = tracing_config(repo=repository.full_name, branch=repository.branch)
+        result = await graph.ainvoke({"repository": repository}, config=config)
         return ReportResult(result["report"], result["html"], result.get("commit_sha"))
     finally:
         await tools.close()
+        flush_traces()

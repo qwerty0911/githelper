@@ -122,3 +122,18 @@ def test_fit_lines_keeps_whole_lines():
     fitted = fit_lines(text, 30)
     assert count_tokens(fitted) <= 30
     assert all(": " in line for line in fitted.splitlines())
+
+
+def test_tracing_config_enables_langfuse_only_with_keys(monkeypatch):
+    from app.agent.tracing import tracing_config
+
+    monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
+    monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
+    config = tracing_config(repo="o/r", branch=None)
+    assert config["callbacks"] == []
+    assert config["metadata"] == {"repo": "o/r", "branch": "default"}
+
+    monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+    monkeypatch.setenv("LANGFUSE_HOST", "http://localhost:1")
+    assert len(tracing_config(repo="o/r", branch="main")["callbacks"]) == 1
