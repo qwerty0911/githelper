@@ -24,8 +24,22 @@ pip install -e ".[dev]"
 
 ```bash
 docker compose up -d mongo
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload     # API
+python -m app.worker              # 워커 (별도 터미널)
 ```
+
+또는 `docker compose up --build`로 mongo, api, worker를 한 번에 실행합니다.
+
+### 잡 API
+
+```bash
+curl -X POST localhost:8000/jobs -H 'content-type: application/json' \
+  -d '{"url":"https://github.com/pallets/click"}'      # -> {"id": "..."}
+curl localhost:8000/jobs/<id>          # 상태와 진행 이벤트
+curl localhost:8000/jobs/<id>/report   # 완료된 HTML 리포트
+```
+
+같은 `repo + commit_sha`는 캐시된 리포트를 재사용합니다.
 
 API 상태 확인: `http://localhost:8000/health`
 

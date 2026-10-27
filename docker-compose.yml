@@ -16,5 +16,14 @@ services:
     depends_on:
       - mongo
 
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    env_file: .env
+    environment:
+      MONGODB_URL: mongodb://mongo:27017
+    depends_on:
+      - mongo
+
 volumes:
   mongo_data:

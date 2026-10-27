@@ -1,5 +1,6 @@
 import os
 import re
+from collections.abc import Awaitable, Callable
 from typing import NamedTuple, TypedDict
 
 from dotenv import load_dotenv
@@ -226,13 +227,21 @@ async def generate_report(
     repository: Repository,
     *,
     model_name: str | None = None,
+    on_progress: Callable[[str], Awaitable[None]] | None = None,
 ) -> ReportResult:
     tools = GitHubTools(repository)
     try:
         graph = build_graph(tools, model_name)
         config = tracing_config(repo=repository.full_name, branch=repository.branch)
-        result = await graph.ainvoke({"repository": repository}, config=config)
-        return ReportResult(result["report"], result["html"], result.get("commit_sha"))
+        state: dict = {}
+        async for update in graph.astream(
+            {"repository": repository}, config=config, stream_mode="updates"
+        ):
+            for node, output in update.items():
+                state.update(output)
+                if on_progress:
+                    await on_progress(node)
+        return ReportResult(state["report"], state["html"], state.get("commit_sha"))
     finally:
         await tools.close()
         flush_traces()
