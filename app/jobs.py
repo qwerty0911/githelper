@@ -15,6 +15,11 @@ def _now() -> datetime:
     return datetime.now(UTC)
 
 
+def _iso(moment: datetime) -> str:
+    # Mongo returns naive datetimes (UTC); mark them so clients don't read them as local time.
+    return moment.replace(tzinfo=UTC).isoformat() if moment.tzinfo is None else moment.isoformat()
+
+
 def parse_object_id(value: str) -> ObjectId | None:
     try:
         return ObjectId(value)
@@ -114,7 +119,7 @@ def serialize_job(job: dict[str, Any]) -> dict[str, Any]:
         "branch": job.get("branch"),
         "status": job["status"],
         "events": [
-            {"at": e["at"].isoformat(), "step": e["step"], "message": e["message"]}
+            {"at": _iso(e["at"]), "step": e["step"], "message": e["message"]}
             for e in job.get("events", [])
         ],
         "error": job.get("error"),

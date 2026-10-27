@@ -43,7 +43,7 @@ curl localhost:8000/jobs/<id>/report   # 완료된 HTML 리포트
 
 API 상태 확인: `http://localhost:8000/health`
 
-프론트엔드 화면:
+프론트엔드 화면 (Vite가 `/api/*`를 `localhost:8000`으로 프록시합니다):
 
 ```bash
 cd frontend

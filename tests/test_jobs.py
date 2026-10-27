@@ -141,3 +141,21 @@ async def test_api_job_lifecycle(db):
             assert (await client.get("/jobs/not-an-id")).status_code == 404
     finally:
         app.dependency_overrides.clear()
+
+
+async def test_sse_streams_events_then_end(db):
+    job_id = await jobs.create_job(db, REPO)
+    await worker.run_once(db, make_generate([]))
+    app.dependency_overrides[get_db] = lambda: db
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(f"/jobs/{job_id}/events")
+            missing = await client.get("/jobs/000000000000000000000000/events")
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.text.count("event: progress") == 6
+    assert response.text.rstrip().endswith('data: {"status": "done", "error": null}')
+    assert missing.status_code == 404

@@ -1,8 +1,10 @@
+import asyncio
+import json
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 
 from app import jobs
@@ -60,3 +62,33 @@ async def get_job_report(job_id: str, db=Depends(get_db)) -> str:
     if report is None:
         raise HTTPException(status_code=404, detail="Report is not ready.")
     return report["html"]
+
+
+SSE_POLL_SECONDS = 1.0
+
+
+def _sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+
+@app.get("/jobs/{job_id}/events")
+async def stream_job_events(job_id: str, db=Depends(get_db)) -> StreamingResponse:
+    await _load_job(db, job_id)  # 404 before the stream starts
+
+    async def stream():
+        sent = 0
+        while True:
+            job = jobs.serialize_job(await _load_job(db, job_id))
+            for event in job["events"][sent:]:
+                yield _sse("progress", event)
+            sent = len(job["events"])
+            if job["status"] in (jobs.DONE, jobs.FAILED):
+                yield _sse("end", {"status": job["status"], "error": job["error"]})
+                return
+            await asyncio.sleep(SSE_POLL_SECONDS)
+
+    return StreamingResponse(
+        stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
