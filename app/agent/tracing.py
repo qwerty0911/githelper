@@ -1,28 +1,52 @@
+"""Optional tracing to Langfuse and/or LangSmith."""
+
 import os
 from typing import Any
 
 
-def tracing_config(*, repo: str, branch: str | None) -> dict[str, Any]:
-    """LangChain run config that sends traces to Langfuse and/or LangSmith when configured.
+def _langfuse_enabled() -> bool:
+    return bool(
+        os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY")
+    )
 
-    LangSmith is enabled purely by env vars (LANGSMITH_TRACING, LANGSMITH_API_KEY), so only
-    the run metadata is set here. Langfuse needs an explicit callback handler.
+
+def tracing_config(
+    *,
+    repo: str,
+    branch: str | None,
+    run_name: str = "github_helper_report",
+) -> dict[str, Any]:
+    """Builds a LangChain run config that sends traces when configured.
+
+    LangSmith is enabled purely by environment variables
+    (`LANGSMITH_TRACING`, `LANGSMITH_API_KEY`), so only run metadata is set
+    for it. Langfuse needs an explicit callback handler.
+
+    Args:
+        repo: Repository in `owner/name` form, recorded as metadata.
+        branch: Branch, recorded as metadata.
+        run_name: Name of the top-level trace.
+
+    Returns:
+        A config dict for `ainvoke` / `astream`.
     """
     config: dict[str, Any] = {
-        "run_name": "github_helper_report",
+        "run_name": run_name,
         "tags": ["github-helper"],
         "metadata": {"repo": repo, "branch": branch or "default"},
         "callbacks": [],
     }
-    if os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"):
-        from langfuse.langchain import CallbackHandler
+    if _langfuse_enabled():
+        # Imported lazily so Langfuse is only loaded when configured.
+        from langfuse import langchain  # pylint: disable=import-outside-toplevel
 
-        config["callbacks"].append(CallbackHandler())
+        config["callbacks"].append(langchain.CallbackHandler())
     return config
 
 
 def flush_traces() -> None:
-    if os.getenv("LANGFUSE_PUBLIC_KEY") and os.getenv("LANGFUSE_SECRET_KEY"):
-        from langfuse import get_client
+    """Sends buffered Langfuse traces before the process moves on."""
+    if _langfuse_enabled():
+        import langfuse  # pylint: disable=import-outside-toplevel
 
-        get_client().flush()
+        langfuse.get_client().flush()

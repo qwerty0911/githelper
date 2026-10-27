@@ -34,12 +34,22 @@ python -m app.worker              # 워커 (별도 터미널)
 
 ```bash
 curl -X POST localhost:8000/jobs -H 'content-type: application/json' \
-  -d '{"url":"https://github.com/pallets/click"}'      # -> {"id": "..."}
+  -d '{"url":"https://github.com/pallets/click","level":"junior"}'  # -> {"id": "..."}
 curl localhost:8000/jobs/<id>          # 상태와 진행 이벤트
 curl localhost:8000/jobs/<id>/report   # 완료된 HTML 리포트
+curl localhost:8000/jobs/<id>/events   # SSE 진행 스트림
+curl -X POST localhost:8000/jobs/<id>/questions -H 'content-type: application/json' \
+  -d '{"question":"옵션 파싱은 어디서 해요?"}'      # 근거 라인과 함께 답변
+curl localhost:8000/jobs/<id>/questions  # 질문 기록
+curl localhost:8000/reports/recent       # 최근 분석된 저장소
 ```
 
-같은 `repo + commit_sha`는 캐시된 리포트를 재사용합니다.
+- `level`: `beginner`(입문자/바이브코더, 기본값) · `junior` · `senior`
+- URL은 `https://github.com/owner/repo/tree/<branch>` 형태도 받습니다.
+- 같은 `repo + commit_sha + level`은 캐시된 리포트를, 같은 리포트에 같은 질문은 캐시된 답변을 재사용합니다.
+- 진행 중인 동일 요청은 새 잡을 만들지 않고 기존 잡 id를 돌려줍니다.
+- 워커가 죽어 15분 넘게 멈춘 잡은 다른 워커가 이어받습니다(최대 3회).
+- `MONGODB_DB`로 데이터베이스 이름을 바꿀 수 있습니다(기본 `github_helper`).
 
 API 상태 확인: `http://localhost:8000/health`
 
@@ -60,22 +70,28 @@ python -m app.agent.cli https://github.com/owner/repository --branch main --outp
 
 GitHub API 익명 호출 한도에 걸리는 경우 `.env`에 `GITHUB_TOKEN`을 지정하세요. 토큰은 공개 저장소 읽기 요청에만 사용합니다.
 
-### 테스트
+### 테스트와 코드 스타일
+
+코드는 Google 스타일 가이드([Python](https://google.github.io/styleguide/pyguide.html), [TypeScript](https://google.github.io/styleguide/tsguide.html))를 따릅니다.
 
 ```bash
 pytest
+ruff format --check . && ruff check .      # 80칸, Google docstring, import 규칙
+cd frontend && npm run lint                # tsc strict + prettier(gts 설정)
 ```
 
 ## 현재 구현 범위
 
-- FastAPI health check 및 MongoDB 개발 환경 구성
 - GitHub 저장소 트리·파일 읽기·코드 검색·스택 탐지 도구
-- LangGraph 기반 파일 선택 및 Pydantic 구조화 가이드 생성
-- 인용 경로/라인 검증 및 Jinja2 HTML 렌더링
-- 프론트엔드 초기 화면
+- LangGraph 에이전트: 파일 선택 → 읽기 → 추가 탐색 → 구조화 리포트
+- 리포트: 요약, 바로 실행해 보기, 읽기 순서, 설명 섹션, 용어 사전
+- 근거 검증: 인용 라인은 실제로 읽은 줄만, 읽기 순서는 트리에 있는 파일만, 실행 명령은 매니페스트나 파일에 그대로 있는 것만 남김
+- 인용은 분석한 커밋의 GitHub 라인 링크로 연결
+- 독자 수준(입문자/주니어/숙련자)별 리포트
+- 레포 Q&A: 같은 커밋의 코드를 다시 찾아 근거 라인과 함께 답변
+- 비동기 잡 + 워커 + SSE 진행 상태, 최근 분석 목록
 
-비동기 작업 API, 워커, SSE 진행 상태, 프론트엔드에서 실제로 리포트를 요청하는 흐름은 다음 단계에서 구현합니다.
-# githelper
+개선 내역과 검증 결과는 [docs/IMPROVEMENT_REPORT.md](docs/IMPROVEMENT_REPORT.md)에 있습니다.
 
 ## 추적 (Langfuse / LangSmith)
 

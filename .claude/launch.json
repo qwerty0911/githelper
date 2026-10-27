@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "verify-api",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["MONGODB_DB=github_helper_verify", ".venv/bin/uvicorn", "app.main:app", "--port", "8001"],
+      "port": 8001
+    },
+    {
+      "name": "verify-web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["VITE_API_TARGET=http://localhost:8001", "npm", "--prefix", "frontend", "exec", "--", "vite", "frontend", "--port", "5174", "--strictPort"],
+      "port": 5174
+    }
+  ]
+}

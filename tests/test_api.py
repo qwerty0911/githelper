@@ -1,9 +1,9 @@
-from fastapi.testclient import TestClient
+from fastapi import testclient
 
-from app.main import app
+from app import main
 
 
 def test_health_route_returns_ok():
-    response = TestClient(app).get("/health")
+    response = testclient.TestClient(main.app).get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
