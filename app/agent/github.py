@@ -397,6 +397,21 @@ class GitHubTools:
         self._text_cache[path] = content
         return content
 
+    async def read_text(self, path: str) -> str:
+        """Reads a whole file as raw text, for parsers that need it.
+
+        Args:
+            path: Repository-relative file path.
+
+        Returns:
+            The file contents without line numbers.
+
+        Raises:
+            ValueError: The path leaves the repository.
+            GitHubError: The file cannot be read.
+        """
+        return await self._read_text(path)
+
     async def read_file(
         self,
         path: str,

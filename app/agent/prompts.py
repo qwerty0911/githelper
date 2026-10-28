@@ -48,17 +48,25 @@ def write_report(level: audience.Level) -> str:
     )
 
 
-def plan_question(max_paths: int) -> str:
-    """Returns the prompt that plans where to look for an answer."""
+def tool_agent(max_steps: int) -> str:
+    """Returns the prompt for the tool-calling Q&A researcher."""
     return (
-        "당신은 저장소 코드에서 질문의 답을 찾는 조사자입니다. "
-        f"{UNTRUSTED_NOTICE} 질문에 답하는 데 필요한 파일을 "
-        f"최대 {max_paths}개 고르세요. 코드 동작을 묻는 질문이면 "
-        "README나 문서보다 실제 소스와 설정 파일을 우선하세요. "
-        "search_queries에는 질문의 개념이 코드에 나타날 때 쓰일 "
-        "식별자나 키워드를 1~3개 넣으세요. 예: 환경 변수 → "
-        "getenv|environ|process\\.env, 리액트 → from 'react'|useState. "
-        "반드시 트리에 있는 경로만 고르세요."
+        "당신은 저장소 코드에서 질문의 답과 근거를 찾는 조사자입니다. "
+        f"{UNTRUSTED_NOTICE} 도구를 최대 {max_steps}번까지 호출해 "
+        "필요한 코드를 찾으세요. search_code에는 코드에 실제로 "
+        "쓰이는 영어 식별자를 넣으세요(예: getenv|environ, "
+        "useState|from 'react'). 결과를 보고 필요한 범위만 "
+        "read_file로 읽으세요. 질문이 아키텍처, 구조, 흐름, "
+        "워크플로우, 파이프라인처럼 그림이 더 이해하기 쉬운 "
+        "내용이면 그림을 만드세요: LangGraph 워크플로우는 "
+        "extract_langgraph, 여러 서비스 구성은 extract_services, "
+        "그 밖의 구조는 읽은 줄을 근거로 draw_diagram을 쓰세요. "
+        "추출 도구로 이미 만든 그림과 같은 내용을 draw_diagram으로 "
+        "다시 그리지 마세요. draw_diagram은 추출 도구로 보여줄 수 "
+        "없는 코드 흐름(예: 요청이 거치는 모듈)에만 쓰세요. "
+        "그림이 필요 없는 질문에는 그림 도구를 쓰지 마세요. "
+        "답에 필요한 근거를 모았으면 도구 호출 없이 '조사 완료'라고 "
+        "답하세요."
     )
 
 
@@ -73,7 +81,9 @@ def answer_question(level: audience.Level) -> str:
         "적으세요. 범위는 짧게(15줄 이내) 잡고, 파일 첫 줄의 "
         "설명 주석, 빈 줄, 괄호만 있는 줄처럼 내용을 보여주지 "
         "않는 줄은 인용하지 마세요. 모르는 용어나 약어는 "
-        "추측해서 풀어 쓰지 마세요. 내용에서 답을 찾을 수 "
+        "추측해서 풀어 쓰지 마세요. '그림 근거'가 있으면 그 연결을 "
+        "근거로 흐름을 설명하세요. '확인됨' 연결은 코드에서 확인된 "
+        "사실입니다. 내용에서 답을 찾을 수 "
         "없으면 모른다고 말하고 어디를 더 보면 좋을지 안내하세요."
     )
 
@@ -99,5 +109,8 @@ def revise_answer(level: audience.Level) -> str:
         "용어의 풀이는 빼세요. 질문에 비해 근거가 부족한 부분은 "
         "'코드에서 확인하지 못했다'고 분명히 말하고, 어느 파일을 "
         "더 보면 좋을지 안내하세요. 근거에 있는 파일 경로는 "
-        "그대로 언급해도 됩니다."
+        "그대로 언급해도 됩니다. '그림 근거'에서 '확인됨'인 연결은 "
+        "코드 줄로 확인된 사실이니 '확인하지 못했다'고 하지 말고, "
+        "그 연결이 보여주는 흐름을 빠짐없이 설명하세요. '미확인' "
+        "연결만 확인하지 못했다고 말하세요."
     )

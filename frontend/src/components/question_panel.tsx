@@ -5,9 +5,11 @@
 import {type FormEvent, useEffect, useState} from 'react';
 
 import {askQuestion, listQuestions, type Question} from '../api';
+import {DiagramView} from './diagram_view';
 
 const SUGGESTIONS = [
   '이 프로젝트는 어디서부터 실행돼요?',
+  '전체 아키텍처를 그림으로 보여줘',
   '설정값이나 환경 변수는 어디서 읽어요?',
   '테스트는 어떻게 실행해요?',
 ];
@@ -88,6 +90,9 @@ export function QuestionPanel({jobId}: QuestionPanelProps) {
             <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">
               {item.answer}
             </p>
+            {item.diagrams?.map(diagram => (
+              <DiagramView key={diagram.title} diagram={diagram} />
+            ))}
             {!item.grounded && (
               <p className="mt-2 text-xs text-amber-700">
                 코드에서 근거를 확인하지 못한 답변이에요. 참고만 해 주세요.

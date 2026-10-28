@@ -204,6 +204,7 @@ async def ask_question(
             grounded=previous["grounded"],
             cached=True,
             version=qa.cache_version(),
+            diagrams=previous.get("diagrams", []),
         )
         return jobs.serialize_question(
             document, repository.full_name, report["commit_sha"]
@@ -248,6 +249,7 @@ async def ask_question(
         grounded=result.grounded,
         cached=False,
         version=qa.cache_version(),
+        diagrams=[diagram.model_dump() for diagram in result.diagrams],
     )
     return jobs.serialize_question(
         document, repository.full_name, report["commit_sha"]

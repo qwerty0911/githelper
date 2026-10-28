@@ -57,6 +57,25 @@ export interface Citation {
   claim?: string;
 }
 
+/** A box in a diagram, with the code line it was read from. */
+export interface DiagramNode {
+  id: string;
+  label: string;
+  /** False when the code does not confirm it; drawn dashed. */
+  verified: boolean;
+  citation: Citation | null;
+}
+
+/** A diagram made while answering a question. */
+export interface Diagram {
+  title: string;
+  /** Read from LangGraph code, a compose file, or proposed by the model. */
+  kind: 'langgraph' | 'services' | 'model';
+  /** Mermaid source generated and escaped by the server. */
+  mermaid: string;
+  nodes: DiagramNode[];
+}
+
 /** A follow-up question and its verified answer. */
 export interface Question {
   id: string;
@@ -65,6 +84,8 @@ export interface Question {
   grounded: boolean;
   cached: boolean;
   citations: Citation[];
+  /** Missing on answers from older versions. */
+  diagrams?: Diagram[];
   created_at: string;
 }
 

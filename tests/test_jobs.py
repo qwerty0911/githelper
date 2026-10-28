@@ -8,6 +8,7 @@ from app import db as db_lib
 from app import jobs
 from app import main
 from app import worker
+from app.agent import diagrams as diagrams_lib
 from app.agent import github
 from app.agent import qa
 from app.agent import report as report_lib
@@ -374,3 +375,52 @@ async def test_answers_from_older_qa_versions_are_not_reused(db):
     assert response.json()["cached"] is False
     assert response.json()["answer"] == "README에 있어요."
     assert len(calls) == 1
+
+
+async def test_question_diagrams_are_stored_and_served_as_mermaid(db):
+    diagram = diagrams_lib.Diagram(
+        title="흐름",
+        kind="langgraph",
+        nodes=[
+            diagrams_lib.DiagramNode(
+                id="load",
+                label="load",
+                citation=report_lib.Citation(
+                    path="app/graph.py", start_line=4, end_line=4
+                ),
+                verified=True,
+            ),
+            diagrams_lib.DiagramNode(id="END", label="END", verified=True),
+        ],
+        edges=[
+            diagrams_lib.DiagramEdge(source="load", target="END", verified=True)
+        ],
+    )
+
+    async def answerer(*_, **__):
+        return qa.AnswerResult("그림 참고", [], True, (diagram,))
+
+    job_id = await jobs.create_job(db, REPO)
+    await worker.run_once(db, make_generate([]))
+    async with client_for(db, answerer) as client:
+        first = (
+            await client.post(
+                f"/jobs/{job_id}/questions", json={"question": "흐름 그려줘"}
+            )
+        ).json()
+        again = (
+            await client.post(
+                f"/jobs/{job_id}/questions", json={"question": "흐름 그려줘"}
+            )
+        ).json()
+
+    for body in (first, again):
+        [served] = body["diagrams"]
+        assert served["title"] == "흐름"
+        assert served["mermaid"].startswith("flowchart LR")
+        assert 'n1(["END"])' in served["mermaid"]
+        assert served["nodes"][0]["citation"]["url"] == (
+            f"https://github.com/owner/project/blob/{SHA}/app/graph.py#L4"
+        )
+        assert served["nodes"][1]["citation"] is None
+    assert again["cached"] is True

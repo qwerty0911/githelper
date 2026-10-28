@@ -13,6 +13,7 @@ import pymongo
 from pymongo import errors as pymongo_errors
 
 from app.agent import audience
+from app.agent import diagrams as diagrams_lib
 from app.agent import github
 
 QUEUED, RUNNING, DONE, FAILED = "queued", "running", "done", "failed"
@@ -317,6 +318,7 @@ async def save_question(
     grounded: bool,
     cached: bool,
     version: str,
+    diagrams: list[dict[str, Any]] | None = None,
 ) -> Document:
     """Stores a question and its answer in a job's history.
 
@@ -333,6 +335,7 @@ async def save_question(
         "grounded": grounded,
         "cached": cached,
         "qa_version": version,
+        "diagrams": diagrams or [],
         "created_at": _now(),
     }
     result = await db.questions.insert_one(document)
@@ -346,6 +349,52 @@ async def list_questions(db, job_id: bson.ObjectId) -> list[Document]:
     return [document async for document in cursor]
 
 
+def _with_url(
+    citation: dict[str, Any] | None, repo: str, commit_sha: str | None
+) -> dict[str, Any] | None:
+    if citation is None:
+        return None
+    return {
+        **citation,
+        "url": github.blob_url(
+            repo,
+            commit_sha,
+            citation["path"],
+            citation["start_line"],
+            citation["end_line"],
+        ),
+    }
+
+
+def serialize_diagram(
+    stored: dict[str, Any], repo: str, commit_sha: str | None
+) -> Document:
+    """Converts a stored diagram to its API form.
+
+    Mermaid source is generated here from the structured diagram, so the
+    escaping rules always apply, and evidence gets github.com links.
+    """
+    diagram = diagrams_lib.Diagram.model_validate(stored)
+    return {
+        "title": diagram.title,
+        "kind": diagram.kind,
+        "mermaid": diagram.to_mermaid(),
+        "nodes": [
+            {
+                "id": node.id,
+                "label": node.label,
+                "verified": node.verified,
+                "citation": _with_url(
+                    node.citation.model_dump() if node.citation else None,
+                    repo,
+                    commit_sha,
+                ),
+            }
+            for node in diagram.nodes
+        ],
+    }
+
+
 def serialize_question(
     document: Document, repo: str, commit_sha: str | None
 ) -> Document:
@@ -357,17 +406,12 @@ def serialize_question(
         "grounded": document["grounded"],
         "cached": document.get("cached", False),
         "citations": [
-            {
-                **citation,
-                "url": github.blob_url(
-                    repo,
-                    commit_sha,
-                    citation["path"],
-                    citation["start_line"],
-                    citation["end_line"],
-                ),
-            }
+            _with_url(citation, repo, commit_sha)
             for citation in document["citations"]
+        ],
+        "diagrams": [
+            serialize_diagram(diagram, repo, commit_sha)
+            for diagram in document.get("diagrams", [])
         ],
         "created_at": _iso(document["created_at"]),
     }
